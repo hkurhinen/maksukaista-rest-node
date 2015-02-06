@@ -1,0 +1,26 @@
+{
+  "name": "maksukaista-rest",
+  "version": "1.0.0",
+  "description": "Maksukaista rest library",
+  "main": "lib/PaybywayServer.js",
+  "scripts": {
+    "test": "node tests/test_runner.js"
+  },
+  "keywords": [
+    "paybyway",
+    "maksukaista",
+    "rest"
+  ],
+  "author": "Maksukaista (https://www.maksukaista.fi)",
+  "dependencies": {
+    "crypto-js": "^3.1.2-5"
+  },
+  "devDependencies": {
+    "nock": "^0.59.1",
+    "qunit": "^0.7.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Paybyway/maksukaista-rest-node"
+  }
+}
