@@ -2,180 +2,143 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8">
-	    <title>Maksukaista - Web payment demo</title>
-	    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	    <meta name="description" content="">
-	    <meta name="author" content="">
-	    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css" rel="stylesheet">
-		  <script type="text/javascript" src="Paybyway.js"></script>
-    	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+		<title>Maksukaista - Web payment demo</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<meta name="description" content="">
+		<meta name="author" content="">
+		<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css" rel="stylesheet">
+		<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
 	</head>
 	<body>
-  <div class="container">
-  <div class="row">
-  <div class="col-xs-12">
-		<h1>Demoshop</h1>
+		<div class="container">
+			<div class="row">
+				<div class="col-xs-12">
+					<h1>Demoshop</h1>
+					<form id="charge" action="#" role="form" autocomplete="off">
+						<div class="row">
+							<div class="col-xs-12">
+								<div class="form-group">
+									<label for="amount">Product</label>
+									<select id="amount" class="form-control">
+										<option value="100">1,00 EUR</option>
+									</select>
+								</div>
+							</div>
+							<div class="col-xs-12">
+								<p class="bg-muted">Please enter your card details.</p>
+								<div class="form-group">
+									<label for="cardNumber">Card number</label>
+									<input type="number" id="cardNumber" lenght="30" placeholder="Enter the card number" class="form-control"/>
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-6">
+								<div class="form-group">
+									<label for="expMonth">Month</label>
+									<select id="expMonth" class="form-control card-exp-month">
+										<option>01</option>
+										<option>02</option>
+										<option>03</option>
+										<option>04</option>
+										<option>05</option>
+										<option>06</option>
+										<option>07</option>
+										<option>08</option>
+										<option>09</option>
+										<option>10</option>
+										<option>11</option>
+										<option>12</option>
+									</select>
+								</div>
+							</div>
+							<div class="col-xs-6">
+								<div class="form-group">
+									<label for="expYear">Year</label>
+									<select id="expYear" class="form-control card-exp-year">
+										<option>2015</option>
+										<option>2016</option>
+										<option>2017</option>
+										<option>2018</option>
+									</select>
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-6">
+								<div class="form-group">
+									<label for="cvv">CVV</label>
+									<input type="number" id="cvv" maxlength="4" class="form-control" lenght="4" placeholder="Enter the CVV"/>
+								</div>
+							</div>
+						</div>
+						<div class="row">
+							<div class="col-xs-12">
+								<div class="form-group">
+									<input type="submit" class="btn" class="form-control" value="Pay"/>
+								</div>
+							</div>
+						</div>
+					</form>
+					<div class="row">
+						<div class="col-xs-12">
+							<div id="payment-result"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<script type="text/javascript">
+				$(document).ready(function(){
+					$("#charge").submit(function(e) {
+						$("#payment-result").html("<p class=\"bg-info\">Processing...</p>");
+						e.preventDefault();
 
-			<form id="the-form" action="#" role="form" autocomplete="off">
-        <div class="row">
-          <div class="col-xs-12">
-        <div class="row">
-          <div class="col-xs-12">
-            <div class="form-group">
-              <label for="amount">Product</label>
-              <select id="amount" class="form-control">
-                <option value="1.00">1,00 EUR</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-xs-12">
-            <p class="bg-muted">Please enter your card details.</p>
-          </div>
-        </div>
+						var getToken = $.post('/get_token');
 
-            <div class="form-group">
-				    <label for="cardNumber">Card number</label>
-				    <input type="number" id="cardNumber" lenght="30" placeholder="Enter the card number" class="form-control"/>
-          </div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-xs-6">
-            <div class="form-group">
-				    <label for="expMonth">Month</label>
-				    <select id="expMonth" class="form-control card-exp-month">
-             	<option>01</option>
-             	<option>02</option>
-              <option>03</option>
-              <option>04</option>
-              <option>05</option>
-              <option>06</option>
-              <option>07</option>
-              <option>08</option>
-              <option>09</option>
-              <option>10</option>
-              <option>11</option>
-              <option>12</option>
-            </select>
-          </div>
-          </div>
-          <div class="col-xs-6">
-            <div class="form-group">
-            <label for="expYear">Year</label>
-            <select id="expYear" class="form-control card-exp-year">
-	            <option>2015</option>
-	            <option>2016</option>
-	            <option>2017</option>
-	            <option>2018</option>
-            </select>
-          </div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-xs-6">
-            <div class="form-group">
-            <label for="cvv">CVV</label>
-            <input type="number" id="cvv" maxlength="4" class="form-control" lenght="4" placeholder="Enter the CVV"/>
-          </div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-xs-12">
-            <div class="form-group">
-            <input type="submit" class="btn" class="form-control" value="Pay"/>
-          </div>
-          </div>
-        </div>
-			</form>
-      <div class="row">
-        <div class="col-xs-12">
-			    <div id="payment-result"></div>
-        </div>
-      </div>
+						getToken.done(function(token) {
+							if(token == "")
+							{
+								$("#payment-result").html("<p class=\"bg-danger\">getToken-request failed</p>");
+								return;
+							}
+
+							var paymentData = {
+								token: token,
+								amount: 100,
+								card: $('#cardNumber').val(),
+								security_code: $('#cvv').val(),
+								currency: 'EUR',
+								exp_month: $('#expMonth').val(),
+								exp_year: $('#expYear').val()
+							}
+
+							var charge = $.post('https://www.paybyway.com/pbwapi/charge', paymentData);
+
+							var completeData = {
+								token: token
+							}
+
+							var complete = $.post('/complete', completeData);
+
+							complete.done(function(result) {
+								if(result === '000')
+									$("#payment-result").html("<p class=\"bg-success\">Payment successful!</p>");
+								else
+									$("#payment-result").html("<p class=\"bg-danger\">Payment failed!</p>");
+							});
+
+							complete.fail(function() {
+								$("#payment-result").html("<p class=\"bg-danger\">Complete request failed</p>");
+							});
+						});
+
+						getToken.fail(function() {
+
+							$("#payment-result").html("<p class=\"bg-danger\">getToken-request failed</p>");
+						});
+					});
+				})
+			</script>
 		</div>
-		<script type="text/javascript">
-			$(document).ready(function(){
-				var paymentTimer = null;
-
-        /*
-          You may set custom urls for the api links by using:
-          Paybyway.instance().setTokenUrl();
-          Paybyway.instance().setCheckUrl();
-        */
-
-        Paybyway.instance().setTokenUrl('/get_token');
-        Paybyway.instance().setCheckUrl('/complete');
-
-				$("#the-form").submit(function(e) 
-        {
-					e.preventDefault();
-					var card = $('#cardNumber').val();
-					var code = $('#cvv').val();
-
-          /*
-            Basic checks for card number and cvv
-          */
-					if(!Paybyway.instance().validateCardNumber(card))
-					{
-						$("#payment-result").html("<p class=\"bg-danger\">Check card number.</p>");
-						return;
-					}
-
-					if(!Paybyway.instance().validateCVV(code))
-					{
-						$("#payment-result").html("<p class=\"bg-danger\">Check CVV.</p>");
-						return;
-					}
-
-					$('.btn').attr("disabled", "disabled");
-
-          paymentTimer = setTimeout(function(){
-						$('.btn').removeAttr("disabled");
-						$("#payment-result").html("<p class=\"bg-danger\">Connection error.</p>");
-					}, 20000);
-
-          // actual function call that invokes the backend token creation process
-    			Paybyway.instance().getToken();
-    			$("#payment-result").html("<p class=\"bg-info\">Processing...</p>");
-				});
-
-        /*
-          Overwritten methods
-        */
-
-        //Token creation was successful. This method is called by the lib when token creationg was successful
-				Paybyway.instance().tokenReady = function(token) 
-        {
-	        // api requires amount to be in currency/100.
-	        var amount = Paybyway.instance().convertToCents($('#amount').val());
-	        var card = $('#cardNumber').val();
-	        var expMonth = $('#expMonth').val();
-	        var expYear = $('#expYear').val();
-	        var code = $('#cvv').val();
-
-	        Paybyway.instance().charge(token, amount, "EUR", card, expMonth, expYear, code);
-  			}
-
-  			// Payment was successful. This method is called by the lib when payment was successful
-  			Paybyway.instance().paymentOk = function(token)
-  			{
-  				$('.btn').removeAttr("disabled");
-  				$("#payment-result").html("<p class=\"bg-success\">Payment successful!</p>");
-          $("#the-form")[0].reset();
-  				clearTimeout(paymentTimer);
-  			} 
-
-  			// Payment failed. This method is called by the lib when something goes wrong
-  			Paybyway.instance().paymentFail = function(token)
-  			{
-  				$('.btn').removeAttr("disabled");
-  				$("#payment-result").html("<p class=\"bg-danger\">Payment failed!</p>");
-  				clearTimeout(paymentTimer);
-  			}
-			});
-		</script>
-  </div>
 	</body>
 </html>

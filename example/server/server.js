@@ -8,8 +8,8 @@ var querystring = require('querystring');
 var app = express();
 
 // Define certificate file locations
-var privateKeyPath = 'key.pem';
-var certFilePath = 'cert.pem';
+var privateKeyPath = '/root/certs/key.pem';
+var certFilePath = '/root/certs/cert.pem';
 
 // Checking if we can establish https connection
 if (fs.existsSync(privateKeyPath) && fs.existsSync(certFilePath)) {
@@ -18,12 +18,12 @@ if (fs.existsSync(privateKeyPath) && fs.existsSync(certFilePath)) {
 	var credentials = {key: privateKey, cert: certificate};
 	var webProtocol = require('https');
 	var server = webProtocol.createServer(credentials, app);
-	sys.puts("SSL taken into use");
+	console.log("SSL taken into use");
 }
 else {
 	var webProtocol = require('http');
 	var server = webProtocol.createServer(app);
-	sys.puts("Cannot find cert files, SSL not in use");
+	console.log("Cannot find cert files, SSL not in use");
 }
 
 var allowCrossDomain = function(req, res, next) {
@@ -33,8 +33,7 @@ var allowCrossDomain = function(req, res, next) {
     next();
 };
 
-var pbwModule = require("maksukaista-rest");
-var paybyway = pbwModule.create();
+var paybyway = require("../../lib/PaybywayServer.js");
 
 paybyway.authOptions = { 
 	host: 'www.paybyway.com',
@@ -52,26 +51,67 @@ paybyway.statusOptions = {
 	https: true
 };
 
-// Set merchant id and private key
-paybyway.setMerchantId(0);
+paybyway.captureOptions = { 
+	host: 'www.paybyway.com',
+	path: '/pbwapi/capture',
+	port: 443,
+	method: 'POST',
+	https: true
+};
+
+paybyway.cancelOptions = { 
+	host: 'www.paybyway.com',
+	path: '/pbwapi/cancel',
+	port: 443,
+	method: 'POST',
+	https: true
+};
+
+paybyway.chargeCardTokenOptions = { 
+	host: 'www.paybyway.com',
+	path: '/pbwapi/charge_card_token',
+	port: 443,
+	method: 'POST',
+	https: true
+};
+
+paybyway.getCardTokenOptions = { 
+	host: 'www.paybyway.com',
+	path: '/pbwapi/get_card_token',
+	port: 443,
+	method: 'POST',
+	https: true
+};
+
+paybyway.deleteCardTokenOptions = { 
+	host: 'www.paybyway.com',
+	path: '/pbwapi/delete_card_token',
+	port: 443,
+	method: 'POST',
+	https: true
+};
+
+// Set private key and api key
 paybyway.setPrivateKey('private key');
+paybyway.setApiKey('api key');
 
 var orderCounter = 1;
 
 var paymentHandler = function(request, response, next) {  	
-	sys.puts("Server got a request: " + request.url);  
+	console.log("Server got a request: " + request.url);  
 
 	var pieces = url.parse(request.url, true)
 	
 	try {
 		if(request.url.match(/^.get_token/)) {
-			sys.puts("got a token request.");
+			console.log("got a token request.");
 
 			// Create charge with customer details and two products
 			paybyway.createCharge({
 				amount: 100,
 				order_number: 'test-order-' + (orderCounter++) + '-' + new Date().getTime(), // Order number shall be unique for every order
 				currency: 'EUR',
+				register_card_token: 0, // Boolean integer defining if a card specific token should be registered.
 				customer: { // Optional customer details
 
 					// All fields are optional
@@ -103,15 +143,21 @@ var paymentHandler = function(request, response, next) {
 						type: 1
 					}
 				]
-			}, function(error, charge, token) {
+			}, function(error, charge, result) {
+
+				console.log('createCharge response: ', result);
+
+				var token = "";
 				if(error) {
-					sys.puts("Got error: " + error.message);
+					console.log("Error: " + error.message);
 					response.status(500);
 				}
-
-				// Token is returned in successful response
-				if(token) {
-					sys.puts("got token = " + token + " for charge = " + charge.order_number);
+				else {
+					// Token is returned in successful response
+					if(result.result == 0) {
+						console.log("got token = " + result.token + " for charge = " + charge.order_number);
+						token = result.token;
+					}
 				}
 
 				// Token echoed back to front-end
@@ -124,22 +170,29 @@ var paymentHandler = function(request, response, next) {
 			request.on('data', function(data) { received += data; });
 			request.on('end', function() {
 				var stuff = querystring.parse(received);
-				sys.puts('checking status for token = ' + stuff.token);
+				console.log('checking status for token = ' + stuff.token);
 				paybyway.statusCheck(stuff.token, function(error, token, result) {
+					var resultMsg = '';
+
+					console.log('statusCheck response: ', result);
+
 					if(error){
-						sys.puts("Got error: " + error.message);
+						console.log("Got error: " + error.message);
 						response.status(500);
 					}
-					
-					if(result === '000') {
-						sys.puts("token = " + token + " payment completed successfully!");
-					}
 					else {
-						sys.puts("token = " + token + " payment failed, result = " + result);
+						if(result.result == 0) {
+							console.log("token = " + token + " payment completed successfully!");
+							resultMsg = '000';
+						}
+						else {
+							console.log("token = " + token + " payment failed");
+							resultMsg = '001';
+						}
 					}
 
 					// Response echoed back to front-end
-					response.end(result);
+					response.end(resultMsg);
 				});
 			});
 		}
@@ -148,7 +201,7 @@ var paymentHandler = function(request, response, next) {
 		}
 	}
 	catch(error) {
-		sys.puts("exception: " + error);
+		console.log("exception: " + error);
 	}
 };
 
@@ -160,4 +213,4 @@ app.use(express.static(__dirname + '/../page'));
 var port = 8000;
 server.listen(port);
 
-sys.puts("Server running at port " + port);
+console.log("Server running at port " + port);
