@@ -6,6 +6,7 @@ var fs = require('fs');
 var querystring = require('querystring');
 
 var app = express();
+var router = express.Router();
 
 // Define certificate file locations
 var privateKeyPath = '/root/certs/key.pem';
@@ -35,181 +36,189 @@ var allowCrossDomain = function(req, res, next) {
 
 var paybyway = require("../../lib/PaybywayServer.js");
 
-paybyway.authOptions = { 
-	host: 'www.paybyway.com',
-	path: '/pbwapi/auth_payment',
-	port: 443,
-	method: 'POST',
-	https: true
-};
-
-paybyway.statusOptions = { 
-	host: 'www.paybyway.com',
-	path: '/pbwapi/check_payment_status',
-	port: 443,
-	method: 'POST',
-	https: true
-};
-
-paybyway.captureOptions = { 
-	host: 'www.paybyway.com',
-	path: '/pbwapi/capture',
-	port: 443,
-	method: 'POST',
-	https: true
-};
-
-paybyway.cancelOptions = { 
-	host: 'www.paybyway.com',
-	path: '/pbwapi/cancel',
-	port: 443,
-	method: 'POST',
-	https: true
-};
-
-paybyway.chargeCardTokenOptions = { 
-	host: 'www.paybyway.com',
-	path: '/pbwapi/charge_card_token',
-	port: 443,
-	method: 'POST',
-	https: true
-};
-
-paybyway.getCardTokenOptions = { 
-	host: 'www.paybyway.com',
-	path: '/pbwapi/get_card_token',
-	port: 443,
-	method: 'POST',
-	https: true
-};
-
-paybyway.deleteCardTokenOptions = { 
-	host: 'www.paybyway.com',
-	path: '/pbwapi/delete_card_token',
-	port: 443,
-	method: 'POST',
-	https: true
-};
-
 // Set private key and api key
 paybyway.setPrivateKey('private key');
 paybyway.setApiKey('api key');
 
 var orderCounter = 1;
 
-var paymentHandler = function(request, response, next) {  	
-	console.log("Server got a request: " + request.url);  
+router.get('/', express.static(__dirname + '/../page'));
 
-	var pieces = url.parse(request.url, true)
-	
-	try {
-		if(request.url.match(/^.get_token/)) {
-			console.log("got a token request.");
+router.get('/create-charge/:type/:selected?', function(req, res) {
+	var paymentType = req.params.type;
+	var selected = typeof req.params.selected !== 'undefined' ? req.params.selected : null;
 
-			// Create charge with customer details and two products
-			paybyway.createCharge({
-				amount: 100,
-				order_number: 'test-order-' + (orderCounter++) + '-' + new Date().getTime(), // Order number shall be unique for every order
-				currency: 'EUR',
-				register_card_token: 0, // Boolean integer defining if a card specific token should be registered.
-				customer: { // Optional customer details
+	console.log('Creating charge, type = ' + paymentType);
 
-					// All fields are optional
-					firstname: 'Test',
-					lastname: 'Person',
-					email: 'koo@koo.com',
-					address_street: 'Testaddress 1',
-					address_city: 'Testlandia',
-					address_zip: '12345'
-				},
-				products: [{ // Optional product fields
+	var chargeObject = {
+		amount: 100,
+		order_number: 'test-order-' + (orderCounter++) + '-' + new Date().getTime(), // Order number shall be unique for every order
+		currency: 'EUR',
+		customer: { // Optional customer details
 
-						// All fields required
-						id: 'test-product-1',
-						title: 'Test Product 1',
-						count: 1,
-						pretax_price: 50,
-						tax: 0,
-						price: 50, // Product prices must match with total amount
-						type: 1
-					},
-					{
-						id: 'test-product-2',
-						title: 'Test Product 2',
-						count: 1,
-						pretax_price: 50,
-						tax: 0,
-						price: 50,
-						type: 1
-					}
-				]
-			}, function(error, charge, result) {
+			// All fields are optional
+			firstname: 'Test',
+			lastname: 'Person',
+			email: 'testperson@maksukaista.fi',
+			address_street: 'Testaddress 1',
+			address_city: 'Testlandia',
+			address_zip: '12345'
+		},
+		products: [{ // Optional product fields
 
-				console.log('createCharge response: ', result);
+				// All fields required
+				id: 'test-product-1',
+				title: 'Test Product 1',
+				count: 1,
+				pretax_price: 50,
+				tax: 0,
+				price: 50, // Product prices must match with total amount
+				type: 1
+			},
+			{
+				id: 'test-product-2',
+				title: 'Test Product 2',
+				count: 1,
+				pretax_price: 50,
+				tax: 0,
+				price: 50,
+				type: 1
+			}
+		]
+	};
 
-				var token = "";
-				if(error) {
-					console.log("Error: " + error.message);
-					response.status(500);
-				}
-				else {
-					// Token is returned in successful response
-					if(result.result == 0) {
-						console.log("got token = " + result.token + " for charge = " + charge.order_number);
-						token = result.token;
-					}
-				}
+	if(paymentType === 'e-payment') {
+		var paymentMethod = {
+			type: 'e-payment',
+			return_url: req.protocol + '://' + req.get('host') + '/e-payment-return',
+			notify_url: req.protocol + '://' + req.get('host') + '/e-payment-notify',
+			lang: 'en'		
+		}
 
-				// Token echoed back to front-end
-				response.end(token);
-			});
-		} 
-		else if(request.url.match(/^.complete/)) {
-			var received = "";
+		if(selected)
+			paymentMethod.selected = [selected];
+	}
+	else {
+		var paymentMethod = {
+			type: 'card',
+			register_card_token: 0	
+		}
+	}
 
-			request.on('data', function(data) { received += data; });
-			request.on('end', function() {
-				var stuff = querystring.parse(received);
-				console.log('checking status for token = ' + stuff.token);
-				paybyway.statusCheck(stuff.token, function(error, token, result) {
-					var resultMsg = '';
+	chargeObject.payment_method = paymentMethod;
 
-					console.log('statusCheck response: ', result);
+	paybyway.createCharge(chargeObject, function(error, charge, result) {
 
-					if(error){
-						console.log("Got error: " + error.message);
-						response.status(500);
-					}
-					else {
-						if(result.result == 0) {
-							console.log("token = " + token + " payment completed successfully!");
-							resultMsg = '000';
-						}
-						else {
-							console.log("token = " + token + " payment failed");
-							resultMsg = '001';
-						}
-					}
+		console.log('createCharge response: ', result);
 
-					// Response echoed back to front-end
-					response.end(resultMsg);
-				});
-			});
+		var token = "";
+		if(error) {
+			console.log("Error: " + error.message);
+			res.status(500);
 		}
 		else {
-			next();
+			// Token is returned in successful response
+			if(result.result == 0) {
+				console.log("Got token = " + result.token + " for charge = " + charge.order_number);
+				token = result.token;
+			}
 		}
-	}
-	catch(error) {
-		console.log("exception: " + error);
-	}
-};
+
+		if(paymentType === 'e-payment') {
+			if(token !== "")
+				res.redirect(paybyway.apiUrl + 'token/' + token);
+			else
+				res.end('Something went wrong when creating a charge.');
+		}
+		else {
+			res.end(token);
+		}
+
+	});
+});
+
+router.get('/check-payment-status/:token', function(req, res) {
+	console.log('checking status for token = ' + req.params.token);
+
+	paybyway.statusCheck(req.params.token, function(error, token, result) {
+		var resultMsg = '';
+
+		console.log('statusCheck response: ', result);
+
+		if(error) {
+			console.log("Got error: " + error.message);
+			res.status(500);
+		}
+		else {
+			if(result.result == 0) {
+				console.log("token = " + token + " payment completed successfully!");
+				resultMsg = '000';
+			}
+			else {
+				console.log("token = " + token + " payment failed");
+				resultMsg = '001';
+			}
+		}
+
+		res.end(resultMsg);
+	});
+});
+
+router.get('/e-payment-return', function(req, res) {
+	console.log('E-payment return, params:', req.query);
+
+	paybyway.checkReturn(req.query, function(error, result) {
+
+		var message = '<html><body><p>';
+
+		if(error)
+		{
+			console.log("Got error: " + error.message);
+			message += error.message;
+			res.status(500);
+		}
+		else
+		{
+			switch(result.RETURN_CODE)
+			{
+				case '0':
+					message += 'Payment was successful for order number: ' + result.ORDER_NUMBER;
+					break;
+				case '4':
+					message += 'Transaction status could not be updated after customer returned from the web page of a bank.';
+					break;
+				case '10':
+					message += 'Maintence break';
+					break;
+				case '1':
+					message += 'Payment failed!';
+					break;
+				default:
+					message += 'Unknown return value';
+			}
+		}
+
+		message += '</p><a href="/">Start again</a></body></html>';
+		res.end(message);
+	});
+});
+
+router.get('/e-payment-notify', function(req, res) {
+	console.log('Got notify, params:', req.query);
+
+	paybyway.checkReturn(req.query, function(error, result) {
+
+		if(error)
+			console.log("Got error: " + error.message);
+		else
+			console.log("Return code = " + result.RETURN_CODE + " for order number = " + result.ORDER_NUMBER);
+	});
+
+	res.end('');
+});
 
 app.use(allowCrossDomain);
-app.use(paymentHandler);
-
-// Serve the demo page folder
-app.use(express.static(__dirname + '/../page'));
+app.use(router);
 var port = 8000;
 server.listen(port);
 

@@ -16,6 +16,7 @@ test('create charge returns error if merchant id or private key not set', functi
 test('check status returns error if merchant id or private key not set', function() {
 	this.api.statusCheck('token', function(err, token, result){
 		equal(err.message, 'Private key or api key not set');
+		equal(err.type, 2)
 		equal(token, 'token');
 	});
 });
@@ -47,6 +48,9 @@ test('create charge should fail if incident id given', function() {
 	this.api.createCharge({
 		order_number: 'order2',
 		currency: 'EUR',
+		payment_method: {
+			type: 'card'
+		},
 		amount: 123
 	}, function(err, charge, result){
 		start();
@@ -64,6 +68,9 @@ test('create charge fails if invalid json returned', function () {
 	this.api.createCharge({
 		order_number: 'order3',
 		currency: 'EUR',
+		payment_method: {
+			type: 'card'
+		},
 		amount: 123
 	}, function(err, charge, token){
 		start();
@@ -80,6 +87,9 @@ test('create charge fails if not successful response', function () {
 	this.api.createCharge({
 		order_number: 'order',
 		currency: 'EUR',
+		payment_method: {
+			type: 'card'
+		},
 		amount: 123
 	}, function(err, charge, result){
 		start();
@@ -93,7 +103,8 @@ test('create charge returns token', function () {
 
 	var response = {
 		result: 0,
-		token: '123'
+		token: '123',
+		type: 'card'
 	}
 
 	nock(apiUrl).post('/pbwapi/auth_payment').reply(200, response);
@@ -101,6 +112,9 @@ test('create charge returns token', function () {
 	this.api.createCharge({
 		order_number: 'order3',
 		currency: 'EUR',
+		payment_method: {
+			type: 'card'
+		},
 		amount: 123
 	}, function(err, charge, result){
 		start();
@@ -116,7 +130,8 @@ test('create charge returns token when customer and products set', function () {
 
 	var response = {
 		result: 0,
-		token: '123'
+		token: '123',
+		type: 'card'
 	}
 
 	nock(apiUrl).post('/pbwapi/auth_payment').reply(200, response);
@@ -124,6 +139,9 @@ test('create charge returns token when customer and products set', function () {
 	this.api.createCharge({
 		order_number: 'order3',
 		currency: 'EUR',
+		payment_method: {
+			type: 'card'
+		},
 		amount: 123,
 		customer: {
 			firstname: 'test',
@@ -155,7 +173,8 @@ test('create charge returns token when customer and products set', function () {
 test('create charge with register card token', function () {
 	var response = {
 		result: 0,
-		token: '123'
+		token: '123',
+		type: 'card'
 	}
 
 	nock(apiUrl).post('/pbwapi/auth_payment').reply(200, response);
@@ -164,10 +183,13 @@ test('create charge with register card token', function () {
 		order_number: 'cardtokenorder',
 		currency: 'EUR',
 		amount: 123,
-		register_card_token: 1
+		payment_method: {
+			type: 'card',
+			register_card_token: 1
+		}
 	}, function(err, charge, result) {
 		start();
-		ok(charge.register_card_token);
+		ok(charge.payment_method.register_card_token);
 	});
 
 	stop();
@@ -177,23 +199,23 @@ test('create charge with register card token', function () {
 test('charge card token', function () {
 	var response = {
 		result: 0,
-		settled: 1	
+		settled: 1
 	}
 
 	nock(apiUrl).post('/pbwapi/charge_card_token', {
-		'version': 'w2.1',
+		'version': 'w3',
 		'api_key': 'asd-213',
 		'order_number': '234asa',
-		'amount': 123,
+		'amount': '123',
 		'currency': 'EUR',
 		'card_token': 'asd4005-123',
-		'authcode': '864F113590258B0454450921CCDD78654F81B4BD68E6EB294B42546291B868F8'
+		'authcode': '3BB8C1FAFB17B53209DEB7D22E444D88672C7CC9D9B99BF4B96E6253511B4B01'
 	}).reply(200, response);
 
 	this.api.chargeCardToken({
 		order_number: '234asa',
 		currency: 'EUR',
-		amount: 123,
+		amount: '123',
 		card_token: 'asd4005-123'
 	}, function(err, charge, result) {
 		start();
@@ -321,7 +343,7 @@ test('get card token', function () {
 	}
 
 	nock(apiUrl).post('/pbwapi/get_card_token', {
-		"version": "w2.1",
+		"version": "w3",
 		"api_key": "asd-213",
 		"card_token": "card-123",
 		"authcode": "8F5C2A8768901DFC1621C7FD3D7E01A35F6117557F8AB181BD7D0DBC5B32CD8C"
@@ -343,7 +365,7 @@ test('delete card token', function() {
 	}
 
 	nock(apiUrl).post('/pbwapi/delete_card_token', {
-		"version": "w2.1",
+		"version": "w3",
 		"api_key": "asd-213",
 		"card_token": "card-123",
 		"authcode": "8F5C2A8768901DFC1621C7FD3D7E01A35F6117557F8AB181BD7D0DBC5B32CD8C"
@@ -383,7 +405,97 @@ test('doRequest returns malformed response', function() {
 });
 
 test('set api version', function() {
-	equal(this.api.apiVersion, 'w2.1');
+	equal(this.api.apiVersion, 'w3');
 	this.api.setApiVersion('wm1');
 	equal(this.api.apiVersion, 'wm1');
+});
+
+test('check return returns valid data', function() {
+
+	var paramsOkSettled = {
+		RETURN_CODE: 0,
+		ORDER_NUMBER: '123',
+		SETTLED: 1,
+		AUTHCODE: '5FF25F1E945C0535327AA4B8150FAC9B4AB058ADFE4733AB353EA07D3EFDA791'
+	};
+
+	this.api.checkReturn(paramsOkSettled, function(error, result) {
+		equal(error, null);
+		equal(JSON.stringify(result), JSON.stringify(paramsOkSettled));
+	});
+
+	var paramsOk = {
+		RETURN_CODE: 0,
+		ORDER_NUMBER: '123',
+		SETTLED: 0,
+		AUTHCODE: '75B7798715EFCD0B80B5DDCA8068BB2871F519EB4A7E65DD8F847CED0353D2B8'
+	};
+
+	this.api.checkReturn(paramsOk, function(error, result) {
+		equal(error, null);
+		equal(JSON.stringify(result), JSON.stringify(paramsOk));
+	});
+
+
+	var paramsOkSettledContactID = {
+		RETURN_CODE: 0,
+		ORDER_NUMBER: '123',
+		CONTACT_ID: 123,
+		SETTLED: 1,
+		AUTHCODE: '56F6CD01E3F7861D814CFB90D88F8FB8C8A51C131BC330E0CD4080B3EB198073'
+	};
+
+	this.api.checkReturn(paramsOkSettledContactID, function(error, result) {
+		equal(error, null);
+		equal(JSON.stringify(result), JSON.stringify(paramsOkSettledContactID));
+	});
+
+	var paramsOkContactID = {
+		RETURN_CODE: 0,
+		ORDER_NUMBER: '123',
+		CONTACT_ID: 123,
+		SETTLED: 0,
+		AUTHCODE: 'A983119EA78EAC739BDB4F5221D1864152432247598BD62DD159A3FC7FA6F6EB'
+	};
+
+	this.api.checkReturn(paramsOkContactID, function(error, result) {
+		equal(error, null);
+		equal(JSON.stringify(result), JSON.stringify(paramsOkContactID));
+	});
+
+	var paramsFailed = {
+		RETURN_CODE: 1,
+		ORDER_NUMBER: '123',
+		AUTHCODE: '017FBFAD84D38BBBE23AE5CE4E780B51806F3BAFDE666BE438508A138BF6A893'
+	};
+
+	this.api.checkReturn(paramsFailed, function(error, result) {
+		equal(error, null);
+		equal(JSON.stringify(result), JSON.stringify(paramsFailed));
+	});
+
+	var paramsFailedIncident = {
+		RETURN_CODE: 1,
+		ORDER_NUMBER: '123',
+		AUTHCODE: 'B23D41A26CCB2BA706E1CE5D354A25BDE1FE69D8EBADAF6FA2D689E62938DE8A',
+		INCIDENT_ID: 'incident'
+	};
+
+	this.api.checkReturn(paramsFailedIncident, function(error, result) {
+		equal(error, null);
+		equal(JSON.stringify(result), JSON.stringify(paramsFailedIncident));
+	});
+
+	var paramsInvalidMacCode = {
+		RETURN_CODE: 0,
+		ORDER_NUMBER: '123',
+		SETTLED: 1,
+		AUTHCODE: '5FF25F1E945C0535327AA4B8150FAC9B4AB058ADFE4733AB353EA07D3EFDA792'
+	}
+
+	this.api.checkReturn(paramsInvalidMacCode, function(error, result) {
+		equal(error.type, 5);
+		equal(JSON.stringify(result), JSON.stringify(paramsInvalidMacCode));
+	});
+
 });

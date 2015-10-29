@@ -13,7 +13,7 @@
 		<div class="container">
 			<div class="row">
 				<div class="col-xs-12">
-					<h1>Demoshop</h1>
+					<h2>Credit card payment</h2>
 					<form id="charge" action="#" role="form" autocomplete="off">
 						<div class="row">
 							<div class="col-xs-12">
@@ -86,6 +86,16 @@
 						</div>
 					</div>
 				</div>
+				<div class="col-xs-12">
+					<hr>
+					<h2>E-payment</h2>
+					<p>
+						<a href="create-charge/e-payment">Create e-payment (go to pay page)</a>
+					</p>
+					<p>
+						<a href="create-charge/e-payment/osuuspankki">Create e-payment (skip pay page)</a>
+					</p>
+				</div>
 			</div>
 			<script type="text/javascript">
 				$(document).ready(function(){
@@ -93,7 +103,7 @@
 						$("#payment-result").html("<p class=\"bg-info\">Processing...</p>");
 						e.preventDefault();
 
-						var getToken = $.post('/get_token');
+						var getToken = $.get('/create-charge/card');
 
 						getToken.done(function(token) {
 							if(token == "")
@@ -114,22 +124,22 @@
 
 							var charge = $.post('https://www.paybyway.com/pbwapi/charge', paymentData);
 
-							var completeData = {
-								token: token
-							}
+							charge.done(function() {
+								// always check payment status through your back end
+								var complete = $.get('/check-payment-status/'+token);
 
-							var complete = $.post('/complete', completeData);
+								complete.done(function(result) {
+									if(result === '000')
+										$("#payment-result").html("<p class=\"bg-success\">Payment successful!</p>");
+									else
+										$("#payment-result").html("<p class=\"bg-danger\">Payment failed!</p>");
+								});
 
-							complete.done(function(result) {
-								if(result === '000')
-									$("#payment-result").html("<p class=\"bg-success\">Payment successful!</p>");
-								else
-									$("#payment-result").html("<p class=\"bg-danger\">Payment failed!</p>");
+								complete.fail(function() {
+									$("#payment-result").html("<p class=\"bg-danger\">Complete request failed</p>");
+								});
 							});
 
-							complete.fail(function() {
-								$("#payment-result").html("<p class=\"bg-danger\">Complete request failed</p>");
-							});
 						});
 
 						getToken.fail(function() {
